@@ -50,6 +50,15 @@ parça parça test etmek için kullanılır:
 Notlar:
 - **ffmpeg** harici bir gereksinimdir (winget `Gyan.FFmpeg` ile kuruldu). PATH'te
   olmasa bile `config.find_ffmpeg_dir()` onu winget'in `WinGet\Links` konumundan bulur.
+- ⚠️ **Python, Microsoft Store'dan kurulu OLMAMALI.** Store Python paketli (MSIX) çalışır;
+  Windows pencerenin görev çubuğu kimliğini paketten alır ve uygulamanın bildirdiği
+  `AppUserModelID`'yi yok sayar → uygulama hep "Python" ikonuyla görünür, sabitlenen
+  kısayolla eşleşmez. Bu venv **python.org** sürümüyle kuruludur
+  (`%LOCALAPPDATA%\Programs\Python\Python313`). Kontrol:
+  `.\.venv\Scripts\python.exe -c "import sys; print(sys.base_prefix)"` — çıktıda
+  `WindowsApps` geçmemeli. Geçiyorsa venv'i python.org sürümüyle yeniden oluştur.
+- **Görev çubuğu kimliği:** `spoty/webmain.py` → `APP_ID = "Ulger.Spoty"`; kısayol da aynı
+  kimliği taşımalı → `tools/fix_shortcut.ps1` (kısayolu oluşturur + kimliği yazar).
 - **deno** harici bir gereksinimdir (winget `DenoLand.Deno`, 2026-07-25'te kuruldu).
   yt-dlp'nin YouTube çıkarıcısı bir JavaScript çalıştırıcısı ister; yoksa
   "No supported JavaScript runtime" uyarısı verir ve **bazı formatları hiç göremez**
@@ -115,8 +124,11 @@ yazıldı ve **pywebview + WebView2 (EdgeChromium)** ile gösterilir. Ses YİNE 
   set_volume/set_shuffle/set_repeat`, `progress` (JS ~300ms yoklar, doğal bitişte sonrakine
   geçer), `search/download` (tek ağ-gerektiren kısım), `create_playlist/add_to_playlist/
   remove_from_playlist/playlists_for_track/rename_track/delete_track/reorder_playlist`,
-  ayrıca `download_video` (mp4 → `video/`, kütüphaneye eklemez) ve `open_video_folder`
-  (`os.startfile` — yalnız gerçek uygulamada çalışır, tarayıcıda test edilemez).
+  ayrıca `download_video` (mp4 → `video/`, kütüphaneye eklemez), `download_progress`
+  (indirme sürerken JS ~500ms yoklar; yt-dlp hook'ları ayrı thread'den `self._dl`
+  sözlüğünü günceller — `progress_hooks` indirme yüzdesi, `postprocessor_hooks`
+  ffmpeg aşaması) ve `open_video_folder` (`os.startfile` — yalnız gerçek uygulamada
+  çalışır, tarayıcıda test edilemez).
   Kapaklar **base64 JPEG data-URI** (`_cover_uri`, önbellekli); liste karo renkleri `_tile()`
   (ada göre deterministik renk paleti).
 - **`web/index.html` / `style.css` / `app.js` / `icons.js`** — CSS değişkenleri = mockup
