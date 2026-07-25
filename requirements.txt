@@ -1,0 +1,10 @@
+# Çekirdek
+yt-dlp
+just_playback
+mutagen
+pillow
+
+# Webview arayüzü — pencere + Python<->JS köprüsü
+pywebview
+pythonnet ; sys_platform == "win32"   # Windows'ta WebView2/EdgeChromium backend için
+# Not: Windows'ta ayrıca sistemde "WebView2 Runtime" kurulu olmalı (Win11'de genelde vardır)

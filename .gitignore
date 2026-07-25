@@ -1,0 +1,22 @@
+# Sanal ortam
+.venv/
+
+# Kullanici verisi (indirilen muzik + video + veritabani + ayarlar)
+music/
+video/
+data/
+
+# Claude Code yerel ayarlari (kisisel izin listesi)
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

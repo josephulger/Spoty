@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spoty</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="search">
+        <span class="search-ic" id="ic-search" title="Ara / İndir"></span>
+        <input id="search" type="text" placeholder="Ne dinlemek istersin?">
+      </div>
+      <span class="spacer"></span>
+      <button class="sq-btn" id="npToggle" title="Şimdi çalıyor panelini aç/kapat"><span id="ic-panel"></span></button>
+    </div>
+    <div class="search-panel" id="searchPanel"></div>
+
+    <div class="middle">
+      <!-- SIDEBAR -->
+      <div class="sidebar">
+        <div class="logo">
+          <div class="badge"><span id="ic-logo"></span></div>
+          <div class="name">Spoty</div>
+        </div>
+        <div class="nav active" id="navLib"><span id="ic-list"></span> Kütüphane</div>
+        <div class="pl-header">
+          <span>ÇALMA LİSTELERİ</span>
+          <button class="mini-btn" id="newPl" title="Yeni liste"><span id="ic-plus"></span></button>
+        </div>
+        <div class="pl-list" id="plList"></div>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="content">
+        <div class="head">
+          <div>
+            <div class="eyebrow" id="eyebrow">İNDİRİLENLER</div>
+            <div class="title" id="title">Kütüphane</div>
+          </div>
+          <div class="head-right">
+            <button class="play-pl" id="playPl" title="Listeyi baştan çal" style="display:none"></button>
+            <span class="meta" id="meta"></span>
+            <button class="del-btn" id="delPl"><span id="ic-trash2"></span> Listeyi sil</button>
+          </div>
+        </div>
+        <div class="colhead" id="colhead">
+          <div class="c-idx">#</div><div class="c-thumb"></div>
+          <div class="c-title">BAŞLIK</div><div class="c-dur">SÜRE</div><div class="c-act">İŞLEM</div>
+        </div>
+        <div class="rows" id="rows"></div>
+      </div>
+
+      <!-- NOW PLAYING -->
+      <div class="nowplaying" id="nowplaying">
+        <div class="np-head">
+          <span class="npt">Şimdi Çalıyor</span>
+          <button class="mini-btn" id="npClose"><span id="ic-close"></span></button>
+        </div>
+        <img class="np-cover" id="npCover" alt="">
+        <div class="np-title" id="npTitle">—</div>
+        <div class="np-artist" id="npArtist"></div>
+        <div class="np-context" id="npContext" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- PLAYER BAR -->
+    <div class="playerbar">
+      <div class="pb-left">
+        <img class="pb-cover" id="pbCover" alt="">
+        <div class="info" style="min-width:0">
+          <div class="pb-title ellipsis" id="pbTitle">—</div>
+          <div class="pb-artist ellipsis" id="pbArtist"></div>
+        </div>
+      </div>
+      <div class="pb-center">
+        <div class="pb-controls">
+          <button class="ctrl" id="cShuffle" title="Karıştır"><span id="ic-shuffle"></span></button>
+          <button class="ctrl bright" id="cPrev" title="Önceki"><span id="ic-prev"></span></button>
+          <button class="play-btn" id="cPlay" title="Oynat/Duraklat"><span id="ic-play"></span></button>
+          <button class="ctrl bright" id="cNext" title="Sonraki"><span id="ic-next"></span></button>
+          <button class="ctrl" id="cRepeat" title="Tekrar"><span id="ic-repeat"></span></button>
+        </div>
+        <div class="pb-progress">
+          <span class="time cur" id="tCur">0:00</span>
+          <div class="bar progress" id="seek"><div class="fill" id="seekFill"></div><div class="knob" id="seekKnob"></div></div>
+          <span class="time" id="tTot">0:00</span>
+        </div>
+      </div>
+      <div class="pb-right">
+        <span id="ic-vol"></span>
+        <div class="bar vol" id="vol"><div class="fill" id="volFill"></div><div class="knob" id="volKnob"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DURUM CUBUGU: kisa bildirimler (indirme bitti / hata). Birkac saniyede kaybolur. -->
+  <div class="statusbar" id="status"></div>
+
+  <div class="overlay" id="overlay"></div>
+
+  <script src="icons.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
