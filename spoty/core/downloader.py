@@ -214,7 +214,10 @@ def download(
 # ---------------------------------------------------------------------------
 # 3) VIDEO INDIRME (mp4, kalite kaybi olmadan)
 # ---------------------------------------------------------------------------
-def _video_opts(progress_hook: Optional[ProgressHook]) -> dict:
+def _video_opts(
+    progress_hook: Optional[ProgressHook],
+    postprocessor_hook: Optional[ProgressHook] = None,
+) -> dict:
     """Video indirme icin yt-dlp ayarlari (en iyi kalite -> mp4 kapsayici).
 
     Kalite kaybi YOK: goruntu ve ses ayri ayri en iyi halleriyle indirilir,
@@ -250,6 +253,9 @@ def _video_opts(progress_hook: Optional[ProgressHook]) -> dict:
 
     if progress_hook:
         opts["progress_hooks"] = [progress_hook]
+    # ffmpeg asamalari (birlestirme/remux/kapak) uzun surebilir -> ayri hook
+    if postprocessor_hook:
+        opts["postprocessor_hooks"] = [postprocessor_hook]
 
     return opts
 
@@ -257,6 +263,7 @@ def _video_opts(progress_hook: Optional[ProgressHook]) -> dict:
 def download_video_from_url(
     url: str,
     progress_hook: Optional[ProgressHook] = None,
+    postprocessor_hook: Optional[ProgressHook] = None,
 ) -> DownloadedVideo:
     """Bir linki VIDEO olarak (mp4) `video/` klasorune indirir.
 
@@ -267,7 +274,7 @@ def download_video_from_url(
 
     Muzik kutuphanesine EKLENMEZ (calici yalnizca ses calar).
     """
-    opts = _video_opts(progress_hook)
+    opts = _video_opts(progress_hook, postprocessor_hook)
 
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)

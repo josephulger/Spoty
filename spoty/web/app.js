@@ -30,9 +30,16 @@ function setStatus(m, opt) {
   e.appendChild(x);
 
   e.classList.add('show');
+  if (opt.sticky) return;   // sürmekte olan iş: elle kapatılana kadar kalsın
   // hata ve aksiyonlu mesajlar daha uzun kalsın
   const ms = opt.kind === 'error' ? 9000 : (opt.action ? 8000 : 4000);
   _statusTimer = setTimeout(() => e.classList.remove('show'), ms);
+}
+
+// Açık bir bildirimin yalnız metnini tazeler (DOM'u yeniden kurmaz → titremez).
+function updateStatus(m) {
+  const msg = $('status') && $('status').querySelector('.st-msg');
+  if (msg) msg.textContent = m; else setStatus(m, { sticky: true });
 }
 
 const state = { view: 'library', pid: null, plName: '', activeIds: [], npVisible: true, lastSeek: 0, shuffle: false, repeat: false, isPlaying: false, playingScope: null };
@@ -297,10 +304,34 @@ async function downloadFromPanel(r, btn) {
 
 // mp4 indirme: kütüphaneye EKLENMEZ, video/ klasörüne iner.
 // İş bitince buton "klasörü aç" düğmesine dönüşür (status barı yok).
+// yt-dlp durumunu okunur tek satıra çevirir.
+// Not: bv*+ba iki ayrı akış indirir (önce görüntü, sonra ses) → "1/2", "2/2".
+function videoProgressText(p) {
+  if (p.phase === 'indiriliyor') {
+    const bolum = ' (' + Math.min((p.part | 0) + 1, 2) + '/2)';
+    const hiz = p.speed ? ' · ' + p.speed : '';
+    const kalan = p.eta ? ' · kalan ' + p.eta : '';
+    return 'Video indiriliyor' + bolum + ' — %' + p.pct + hiz + kalan;
+  }
+  return 'Video: ' + (p.phase || 'işleniyor') + '…';
+}
+
 async function downloadVideoFromPanel(r, btn) {
   stopPreview();
   btn.disabled = true; btn.classList.add('busy'); btn.innerHTML = '<div class="spinner"></div>';
-  const res = await API.download_video(r.url);
+  setStatus('Video indiriliyor…', { sticky: true });
+
+  // Canlı ilerleme: indirme ayrı thread'de koşarken durumu yokla (çalma ilerlemesiyle aynı desen)
+  const poll = setInterval(async () => {
+    let p = null;
+    try { p = await API.download_progress(); } catch (e) { return; }
+    if (p && p.active) updateStatus(videoProgressText(p));
+  }, 500);
+
+  let res;
+  try { res = await API.download_video(r.url); }
+  finally { clearInterval(poll); }
+
   if (res.error) {
     btn.disabled = false; btn.classList.remove('busy');
     btn.classList.add('failed'); btn.innerHTML = ICONS.video;

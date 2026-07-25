@@ -76,6 +76,8 @@ class Api:
         self._shuffle: bool = False
         self._repeat: bool = False
         self._now_path: Optional[str] = None
+        self._dl: dict = {}
+        self._dl_reset()
 
     # ---- yardımcılar ----
     def _track_dict(self, t) -> dict:
@@ -216,15 +218,61 @@ class Api:
             return {"error": str(e)}
         return {"ok": True, "title": getattr(track, "title", "")}
 
+    # ---- video indirme ilerlemesi ----
+    # yt-dlp hook'ları indirmeyi yürüten ayrı thread'den çağrılır; burada yalnızca
+    # küçük bir sözlük güncellenir, JS `download_progress()` ile ~500ms'de bir yoklar.
+    def _dl_reset(self) -> None:
+        self._dl = {"active": False, "url": "", "phase": "", "pct": 0.0,
+                    "speed": "", "eta": "", "part": 0}
+
+    def _dl_hook(self, d: dict) -> None:
+        """İndirme ilerlemesi. `bv*+ba` iki ayrı akış indirir → hook iki tur döner."""
+        st = d.get("status")
+        if st == "downloading":
+            total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+            done = d.get("downloaded_bytes") or 0
+            self._dl["phase"] = "indiriliyor"
+            self._dl["pct"] = round(done * 100.0 / total, 1) if total else 0.0
+            self._dl["speed"] = (d.get("_speed_str") or "").strip()
+            self._dl["eta"] = (d.get("_eta_str") or "").strip()
+        elif st == "finished":
+            self._dl["part"] = int(self._dl.get("part", 0)) + 1
+            self._dl["pct"] = 100.0
+            self._dl["phase"] = "işleniyor"
+
+    def _pp_hook(self, d: dict) -> None:
+        """ffmpeg aşaması (büyük dosyada indirmeden uzun sürebilir)."""
+        if d.get("status") != "started":
+            return
+        self._dl["phase"] = {
+            "Merger": "görüntü ve ses birleştiriliyor",
+            "FFmpegVideoRemuxer": "mp4'e dönüştürülüyor",
+            "FFmpegMetadata": "etiketler yazılıyor",
+            "EmbedThumbnail": "kapak gömülüyor",
+        }.get(d.get("postprocessor") or "", "işleniyor")
+
+    def download_progress(self) -> dict:
+        """JS'in yokladığı anlık indirme durumu (kopya döner)."""
+        return dict(self._dl)
+
     def download_video(self, url: str) -> dict:
         """Bir linki mp4 olarak `video/` klasörüne indirir (kalite kaybı yok).
 
         Müzik kütüphanesine EKLENMEZ — çalıcı yalnızca ses çalar.
         """
+        self._dl_reset()
+        self._dl["active"] = True
+        self._dl["url"] = url
+        self._dl["phase"] = "başlıyor"
         try:
-            video = downloader.download_video_from_url(url)
+            video = downloader.download_video_from_url(
+                url, progress_hook=self._dl_hook, postprocessor_hook=self._pp_hook
+            )
         except Exception as e:  # noqa: BLE001
+            self._dl["active"] = False
             return {"error": str(e)}
+        finally:
+            self._dl["active"] = False
         return {
             "ok": True,
             "title": video.title,
