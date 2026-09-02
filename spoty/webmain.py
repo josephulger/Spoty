@@ -66,6 +66,7 @@ def main() -> None:
         js_api=api,
     )
     window.events.closing += api.save_state  # kapanışta ses/son şarkı kaydet
+    api.window = window  # klasör seçme diyaloğu için (bkz. Api.choose_shared_folder)
     webview.start(icon=str(icon))  # pencere/görev çubuğu ikonu
 
 

@@ -21,14 +21,42 @@ if getattr(sys, "frozen", False):
 else:
     PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
+# Paylasilan kutuphane (opsiyonel): iki kisi ayni Google Drive/Dropbox gibi
+# senkron klasoru music/data/video icin kok olarak kullanirsa, kutuphaneler
+# birbirine gorunur. Kok yolu SHARED_ROOT_FILE'a yazilir; bu dosya PROJECT_ROOT'ta
+# (exe'nin yaninda) durur, senkron KLASORUN DISINDADIR -- her bilgisayarda
+# kullanici adi/surucu harfi farkli olabileceginden makineye ozeldir, senkron
+# edilmemelidir.
+SHARED_ROOT_FILE: Path = PROJECT_ROOT / "shared_folder.txt"
+
+
+def _shared_root() -> Path | None:
+    try:
+        p = Path(SHARED_ROOT_FILE.read_text(encoding="utf-8").strip())
+    except Exception:
+        return None
+    return p if p.exists() else None
+
+
+def set_shared_root(path: str | None) -> None:
+    """Paylasilan klasoru ayarlar/kaldirir. Etkisi icin uygulamanin yeniden
+    baslatilmasi gerekir (yollar modul yuklenirken hesaplanir)."""
+    if path:
+        SHARED_ROOT_FILE.write_text(str(Path(path)), encoding="utf-8")
+    else:
+        SHARED_ROOT_FILE.unlink(missing_ok=True)
+
+
+_LIBRARY_ROOT: Path = _shared_root() or PROJECT_ROOT
+
 # Indirilen mp3'lerin gidecegi klasor
-MUSIC_DIR: Path = PROJECT_ROOT / "music"
+MUSIC_DIR: Path = _LIBRARY_ROOT / "music"
 
 # Indirilen videolarin gidecegi klasor (muzik kutuphanesinden ayri tutulur)
-VIDEO_DIR: Path = PROJECT_ROOT / "video"
+VIDEO_DIR: Path = _LIBRARY_ROOT / "video"
 
 # Veritabani vb. verilerin tutuldugu klasor
-DATA_DIR: Path = PROJECT_ROOT / "data"
+DATA_DIR: Path = _LIBRARY_ROOT / "data"
 DB_PATH: Path = DATA_DIR / "spoty.db"
 
 # Klasorler yoksa otomatik olustur (uygulama her acildiginda garanti)
@@ -38,7 +66,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Surum / guncelleme (GitHub Releases). pyproject.toml'daki version ile birlikte
 # elle guncellenir; her yeni .exe paketlemesinde ikisi de artmali.
-APP_VERSION: str = "1.0.3"
+APP_VERSION: str = "1.0.4"
 GITHUB_REPO: str = "josephulger/Spoty"
 
 # Indirme varsayilanlari

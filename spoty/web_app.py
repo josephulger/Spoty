@@ -17,6 +17,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
+import webview
 from PIL import Image
 
 from spoty import config
@@ -81,6 +82,7 @@ class Api:
         self._dl: dict = {}
         self._dl_reset()
         self._upd: dict = {"active": False, "phase": "", "pct": 0.0}
+        self.window = None  # webmain.main() pencere olusturunca atar
 
     # ---- yardımcılar ----
     def _track_dict(self, t) -> dict:
@@ -386,6 +388,39 @@ class Api:
             "pos": self.player.position, "dur": self.player.duration,
             "playing": self.player.is_playing, "advanced": advanced,
         }
+
+    # ---- paylasilan kutuphane ----
+    def get_shared_folder(self) -> str:
+        """Su an aktif olan paylasim klasoru (yoksa bos string)."""
+        return str(config.SHARED_ROOT_FILE.read_text(encoding="utf-8").strip()) if config.SHARED_ROOT_FILE.exists() else ""
+
+    def choose_shared_folder(self) -> dict:
+        """Klasor secme diyalogu acar, seceni kaydeder. Etkisi icin yeniden baslatma gerekir."""
+        if self.window is None:
+            return {"error": "Pencere hazir degil"}
+        try:
+            result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        except Exception as e:  # noqa: BLE001
+            return {"error": str(e)}
+        if not result:
+            return {"cancelled": True}
+        folder = result[0]
+        config.set_shared_root(folder)
+        return {"ok": True, "folder": folder}
+
+    def clear_shared_folder(self) -> bool:
+        config.set_shared_root(None)
+        return True
+
+    def restart_app(self) -> bool:
+        """Uygulamayi kapatip aynisini tekrar baslatir (klasor degisikligi sonrasi)."""
+        if not getattr(sys, "frozen", False):
+            return False
+        try:
+            os.startfile(sys.executable)  # noqa: S606  (Windows'a ozgu)
+        except Exception:  # noqa: BLE001
+            return False
+        os._exit(0)
 
     # ---- guncelleme ----
     def check_update(self) -> dict:

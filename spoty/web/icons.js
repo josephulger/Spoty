@@ -32,7 +32,7 @@ function injectStaticIcons() {
     'ic-search': 'search', 'ic-dl': 'download', 'ic-panel': 'panel', 'ic-logo': 'noteBlack',
     'ic-list': 'list', 'ic-plus': 'plus', 'ic-trash2': 'trash', 'ic-close': 'close',
     'ic-shuffle': 'shuffle', 'ic-prev': 'prev', 'ic-next': 'next', 'ic-play': 'play',
-    'ic-repeat': 'repeat', 'ic-vol': 'vol',
+    'ic-repeat': 'repeat', 'ic-vol': 'vol', 'ic-folder': 'folder',
   };
   for (const [id, name] of Object.entries(map)) {
     const el = document.getElementById(id);

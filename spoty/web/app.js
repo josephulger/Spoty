@@ -435,6 +435,44 @@ async function removeFromPlaylist(tid) { await API.remove_from_playlist(state.pi
 function newPlaylist() { showInput('Yeni Çalma Listesi', 'Liste adı', async (name) => { await API.create_playlist(name); await refreshSidebar(); setStatus('Liste oluşturuldu: ' + name); }); }
 function delPlaylist() { if (state.pid == null) return; showConfirm('Bu çalma listesi silinsin mi? (Şarkılar kalır)', 'Sil', async () => { await API.delete_playlist(state.pid); await refreshSidebar(); showLibrary(); setStatus('Liste silindi'); }); }
 
+// ---------- paylasilan kutuphane ----------
+async function showSharedFolderSettings() {
+  const current = await API.get_shared_folder();
+  const status = current
+    ? `Şu an paylaşılan klasör: <b>${esc(current)}</b>`
+    : `Şu an klasör paylaşılmıyor, kütüphane bu bilgisayara özel.`;
+  const d = el('div', 'dialog', `
+    <h3>Paylaşılan Kütüphane</h3>
+    <div class="sub">${status}</div>
+    <div class="sub" style="margin-top:8px">
+      İki kişi aynı müzikleri görsün istiyorsan, ikinizin de bilgisayarında senkron olan
+      bir Google Drive/Dropbox klasörü seç (ikinizde de aynı klasör senkron olmalı).
+      Seçtikten sonra uygulama yeniden başlar.
+    </div>
+    <div class="btns">
+      ${current ? '<button class="b cancel" id="mClear">Paylaşımı kaldır</button>' : ''}
+      <button class="b cancel" id="mClose">Kapat</button>
+      <button class="b ok" id="mPick">Klasör seç…</button>
+    </div>`);
+  openModal(d);
+  d.querySelector('#mClose').onclick = closeModal;
+  const clearBtn = d.querySelector('#mClear');
+  if (clearBtn) clearBtn.onclick = async () => {
+    await API.clear_shared_folder();
+    closeModal();
+    setStatus('Paylaşım kaldırıldı, yeniden başlatılıyor…', { sticky: true });
+    setTimeout(() => API.restart_app(), 800);
+  };
+  d.querySelector('#mPick').onclick = async () => {
+    const res = await API.choose_shared_folder();
+    if (!res || res.cancelled) return;
+    if (res.error) { setStatus('Hata: ' + res.error, { kind: 'error' }); return; }
+    closeModal();
+    setStatus('Klasör ayarlandı, yeniden başlatılıyor…', { sticky: true });
+    setTimeout(() => API.restart_app(), 800);
+  };
+}
+
 // ---------- sürükle-bırak: soldaki ≡ tutamaktan, YALNIZ DİKEY ----------
 let gdrag = null;
 function startGripDrag(e, row) {
@@ -528,6 +566,7 @@ async function init() {
   $('navLib').onclick = () => showLibrary();
   $('npClose').onclick = toggleNp;
   $('npToggle').onclick = toggleNp;
+  $('sharedBtn').onclick = showSharedFolderSettings;
   $('newPl').onclick = newPlaylist;
   $('delPl').onclick = delPlaylist;
   $('playPl').innerHTML = ICONS.play;
