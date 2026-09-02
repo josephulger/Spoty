@@ -5,8 +5,9 @@
 music/
 video/
 data/
-# Paylasilan kutuphane kok yolu (makineye ozel, bkz. spoty/config.py)
+# Paylasilan kutuphane kok yolu + kisi adi (makineye ozel, bkz. spoty/config.py)
 shared_folder.txt
+user_name.txt
 
 # Claude Code yerel ayarlari (kisisel izin listesi)
 .claude/

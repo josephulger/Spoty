@@ -197,6 +197,7 @@ svg { display:block; }
 .row .r-title { font-size:15px; font-weight:700; }
 .row.playing .r-title { color:var(--green); }
 .row .r-artist { font-size:13px; color:var(--sub); margin-top:2px; }
+.row .r-plays { font-size:11px; color:var(--faint); margin-top:2px; }
 .row .r-dur { width:46px; text-align:right; font-size:13px; color:var(--sub); }
 .row.playing .r-dur { color:var(--green); }
 .row .acts {

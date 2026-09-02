@@ -99,6 +99,16 @@ def init_db() -> None:
                 FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
                 FOREIGN KEY (track_id)    REFERENCES tracks(id)    ON DELETE CASCADE
             );
+
+            -- Paylasilan kutuphanede kim hangi sarkiyi kac kere caldi.
+            -- user_name bu bilgisayardaki kisinin adi (config.get_user_name()).
+            CREATE TABLE IF NOT EXISTS play_counts (
+                track_id  INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                count     INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (track_id, user_name),
+                FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE
+            );
             """
         )
 
@@ -137,6 +147,29 @@ def add_track(track: "DownloadedTrack") -> int:
             (track.title, track.artist, track.duration, track.filepath, track.source_url),
         )
         return int(cur.lastrowid)
+
+
+def record_play(track_id: int, user_name: str) -> None:
+    """Bir sarki calindiginda cagrilir; o kisinin o sarki icin sayacini 1 artirir."""
+    user_name = (user_name or "").strip()
+    if not user_name:
+        return
+    with _connect() as conn:
+        conn.execute(
+            """INSERT INTO play_counts (track_id, user_name, count) VALUES (?, ?, 1)
+               ON CONFLICT(track_id, user_name) DO UPDATE SET count = count + 1""",
+            (track_id, user_name),
+        )
+
+
+def get_play_counts() -> dict[int, dict[str, int]]:
+    """Tum sarkilar icin {track_id: {kisi_adi: sayi}} -- tek sorguda, N+1 yok."""
+    with _connect() as conn:
+        rows = conn.execute("SELECT track_id, user_name, count FROM play_counts").fetchall()
+    out: dict[int, dict[str, int]] = {}
+    for r in rows:
+        out.setdefault(r["track_id"], {})[r["user_name"]] = r["count"]
+    return out
 
 
 def get_all_tracks() -> list[Track]:

@@ -85,12 +85,13 @@ class Api:
         self.window = None  # webmain.main() pencere olusturunca atar
 
     # ---- yardımcılar ----
-    def _track_dict(self, t) -> dict:
+    def _track_dict(self, t, plays: Optional[dict] = None) -> dict:
         return {
             "id": t.id, "title": t.title, "artist": t.artist or "",
             "duration": t.duration, "duration_str": t.duration_str,
             "cover": _cover_uri(t.filepath, 80),
             "playing": bool(self._now_path) and Path(t.filepath) == Path(self._now_path),
+            "plays": (plays or {}).get(t.id, {}),
         }
 
     def _now_dict(self) -> Optional[dict]:
@@ -110,10 +111,20 @@ class Api:
             "playlists": self.get_playlists(),
             "volume": round(self.player.volume, 3),
             "now": self._now_dict(),
+            "user_name": config.get_user_name(),
         }
 
+    def get_user_name(self) -> str:
+        return config.get_user_name()
+
+    def set_user_name(self, name: str) -> str:
+        name = (name or "").strip()
+        config.set_user_name(name)
+        return name
+
     def get_library(self) -> list:
-        return [self._track_dict(t) for t in library.get_all_tracks()]
+        plays = library.get_play_counts()
+        return [self._track_dict(t, plays) for t in library.get_all_tracks()]
 
     def get_playlists(self) -> list:
         out = []
@@ -122,7 +133,8 @@ class Api:
         return out
 
     def get_playlist_tracks(self, pid: int) -> list:
-        return [self._track_dict(t) for t in library.get_playlist_tracks(int(pid))]
+        plays = library.get_play_counts()
+        return [self._track_dict(t, plays) for t in library.get_playlist_tracks(int(pid))]
 
     # ---- çalma ----
     def play(self, track_id: int, queue_ids: list, source: str) -> dict:
@@ -145,6 +157,7 @@ class Api:
         except Exception:  # noqa: BLE001
             return {}
         self._now_path = t.filepath
+        library.record_play(t.id, config.get_user_name())
         return self._now_dict() or {}
 
     def toggle(self) -> bool:

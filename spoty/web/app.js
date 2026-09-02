@@ -42,7 +42,7 @@ function updateStatus(m) {
   if (msg) msg.textContent = m; else setStatus(m, { sticky: true });
 }
 
-const state = { view: 'library', pid: null, plName: '', activeIds: [], npVisible: true, lastSeek: 0, shuffle: false, repeat: false, isPlaying: false, playingScope: null };
+const state = { view: 'library', pid: null, plName: '', activeIds: [], npVisible: true, lastSeek: 0, shuffle: false, repeat: false, isPlaying: false, playingScope: null, userName: '' };
 // playingScope: 'library' | <playlist pid> | null  (o an çalan kaynağı belirtir)
 function curScope() { return state.view === 'library' ? 'library' : (state.view === 'playlist' ? state.pid : null); }
 
@@ -121,7 +121,7 @@ function renderTracks(tracks, mode) {
     const thumb = el('div', 'thumb');
     if (t.cover) { thumb.style.backgroundImage = `url(${t.cover})`; thumb.style.backgroundSize = 'cover'; }
     else { thumb.innerHTML = ICONS.note; thumb.style.color = '#5a5a5a'; }
-    const info = el('div', 'info', `<div class="r-title ellipsis">${esc(t.title)}</div><div class="r-artist ellipsis">${esc(t.artist || '—')}</div>`);
+    const info = el('div', 'info', `<div class="r-title ellipsis">${esc(t.title)}</div><div class="r-artist ellipsis">${esc(t.artist || '—')}</div><div class="r-plays ellipsis">${formatPlays(t.plays)}</div>`);
     const dur = el('div', 'r-dur', t.duration_str);
     const acts = el('div', 'acts');
     acts.append(actBtn('edit', 'Yeniden adlandır', () => showRename(t)));
@@ -144,6 +144,16 @@ function renderTracks(tracks, mode) {
     if (t.playing) playingRow = row;
   });
   if (playingRow) playingRow.scrollIntoView({ block: 'nearest' });
+}
+// Kişi başına çalma sayısını "Sen: 3 · Vedat: 7" şeklinde biçimlendirir.
+function formatPlays(plays) {
+  if (!plays) return '';
+  const names = Object.keys(plays);
+  if (!names.length) return '';
+  const parts = names
+    .sort((a, b) => plays[b] - plays[a])
+    .map(n => `${n === state.userName ? 'Sen' : esc(n)}: ${plays[n]}`);
+  return parts.join(' · ');
 }
 function actBtn(icon, title, fn) {
   const b = el('span', 'a', ICONS[icon]); b.title = title; b.draggable = false;
@@ -449,6 +459,8 @@ async function showSharedFolderSettings() {
       bir Google Drive/Dropbox klasörü seç (ikinizde de aynı klasör senkron olmalı).
       Seçtikten sonra uygulama yeniden başlar.
     </div>
+    <label style="margin-top:10px">Senin adın (çalma sayaçlarında görünür)</label>
+    <input id="mName" value="${esc(state.userName || '')}" placeholder="örn. Vedat">
     <div class="btns">
       ${current ? '<button class="b cancel" id="mClear">Paylaşımı kaldır</button>' : ''}
       <button class="b cancel" id="mClose">Kapat</button>
@@ -456,6 +468,11 @@ async function showSharedFolderSettings() {
     </div>`);
   openModal(d);
   d.querySelector('#mClose').onclick = closeModal;
+  const nameInp = d.querySelector('#mName');
+  nameInp.addEventListener('change', async () => {
+    const v = nameInp.value.trim();
+    if (v && v !== state.userName) { state.userName = await API.set_user_name(v); refreshView(); setStatus('Ad kaydedildi: ' + v); }
+  });
   const clearBtn = d.querySelector('#mClear');
   if (clearBtn) clearBtn.onclick = async () => {
     await API.clear_shared_folder();
@@ -553,8 +570,10 @@ async function init() {
   setPlayIcon(false);
   $('npToggle').style.color = 'var(--green)';
   const data = await API.get_initial();
+  state.userName = data.user_name || '';
   renderPlaylists(data.playlists);
   await showLibrary();
+  if (!state.userName) askUserName();
   setBar($('volFill'), $('volKnob'), data.volume);
   if (data.now) updateNowPlaying(data.now);
 
@@ -591,6 +610,16 @@ async function init() {
 
   setInterval(poll, 300);
   checkForUpdate();
+}
+
+function askUserName() {
+  const d = el('div', 'dialog', `<h3>Sen kimsin?</h3><div class="sub">Paylaşılan kütüphanede kim ne kadar dinledi diye ayırt edebilmek için adını yazar mısın?</div><label>Adın</label><input id="mIn" placeholder="örn. Vedat"><div class="btns"><button class="b ok">Kaydet</button></div>`);
+  openModal(d);
+  const inp = d.querySelector('#mIn');
+  const save = async () => { const v = inp.value.trim(); if (!v) return; state.userName = await API.set_user_name(v); closeModal(); refreshView(); };
+  d.querySelector('.ok').onclick = save;
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+  setTimeout(() => inp.focus(), 30);
 }
 
 // ---------- guncelleme ----------

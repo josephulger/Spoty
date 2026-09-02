@@ -49,6 +49,23 @@ def set_shared_root(path: str | None) -> None:
 
 _LIBRARY_ROOT: Path = _shared_root() or PROJECT_ROOT
 
+# Bu bilgisayari kullanan kisinin adi (calma sayaci "kim kac kere dinledi"
+# gostersin diye). Makineye ozeldir, SHARED_ROOT_FILE gibi PROJECT_ROOT'ta
+# durur ve senkron edilmez -- kutuphane paylasilsa bile herkes kendi adini
+# kendi bilgisayarinda ayarlar.
+USER_NAME_FILE: Path = PROJECT_ROOT / "user_name.txt"
+
+
+def get_user_name() -> str:
+    try:
+        return USER_NAME_FILE.read_text(encoding="utf-8").strip()
+    except Exception:
+        return ""
+
+
+def set_user_name(name: str) -> None:
+    USER_NAME_FILE.write_text((name or "").strip(), encoding="utf-8")
+
 # Indirilen mp3'lerin gidecegi klasor
 MUSIC_DIR: Path = _LIBRARY_ROOT / "music"
 
@@ -66,7 +83,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Surum / guncelleme (GitHub Releases). pyproject.toml'daki version ile birlikte
 # elle guncellenir; her yeni .exe paketlemesinde ikisi de artmali.
-APP_VERSION: str = "1.0.4"
+APP_VERSION: str = "1.0.5"
 GITHUB_REPO: str = "josephulger/Spoty"
 
 # Indirme varsayilanlari
