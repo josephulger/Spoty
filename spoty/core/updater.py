@@ -127,13 +127,13 @@ def start_update(
     bat_path = tmp_dir / "spoty_update.bat"
     bat_path.write_text(
         "@echo off\r\n"
-        ":wait\r\n"
-        f'tasklist /fi "PID eq {pid}" | find "{pid}" >nul\r\n'
-        "if not errorlevel 1 (\r\n"
-        "  timeout /t 1 /nobreak >nul\r\n"
-        "  goto wait\r\n"
-        ")\r\n"
-        f'robocopy "{src_dir}" "{dst_dir}" /E /IS /IT /NFL /NDL /NJH /NJS\r\n'
+        # tasklist ciktisinda PID metin arama YANLIS eslesebilir (orn. 12 icin
+        # 123 de eslesir) ve sonsuza kadar beklemede kalir; Wait-Process pid'i
+        # tam esler ve process zaten kapanmissa hemen doner.
+        f'powershell -NoProfile -Command "Wait-Process -Id {pid} -Timeout 15 -ErrorAction SilentlyContinue"\r\n'
+        # robocopy sinirli deneme yapar (AV/gezgin dosyayi kisa sure kilitleyebilir)
+        # yoksa varsayilan olarak dakikalarca donebilir.
+        f'robocopy "{src_dir}" "{dst_dir}" /E /IS /IT /R:10 /W:1 /NFL /NDL /NJH /NJS\r\n'
         f'start "" "{dst_dir / "Spoty.exe"}"\r\n'
         f'rmdir /s /q "{tmp_dir}"\r\n',
         encoding="utf-8",
