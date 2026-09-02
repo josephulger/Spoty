@@ -17,11 +17,10 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-import webview
 from PIL import Image
 
 from spoty import config
-from spoty.core import downloader, library, metadata, settings, updater
+from spoty.core import cloud, downloader, metadata, settings, updater
 from spoty.core.player import Player
 
 # Çalma listesi karoları için renk paleti (theme.py ile aynı, ctk'siz)
@@ -123,23 +122,32 @@ class Api:
         return name
 
     def get_library(self) -> list:
-        plays = library.get_play_counts()
-        return [self._track_dict(t, plays) for t in library.get_all_tracks()]
+        try:
+            plays = cloud.get_play_counts()
+            return [self._track_dict(t, plays) for t in cloud.get_all_tracks()]
+        except cloud.CloudError:
+            return []  # internet yok/erisim sorunu -- bos kutuphane goster, cokme
 
     def get_playlists(self) -> list:
-        out = []
-        for pl in library.get_playlists():
-            out.append({"id": pl.id, "name": pl.name, "count": pl.track_count, **_tile(pl.name)})
-        return out
+        try:
+            out = []
+            for pl in cloud.get_playlists():
+                out.append({"id": pl.id, "name": pl.name, "count": pl.track_count, **_tile(pl.name)})
+            return out
+        except cloud.CloudError:
+            return []
 
     def get_playlist_tracks(self, pid: int) -> list:
-        plays = library.get_play_counts()
-        return [self._track_dict(t, plays) for t in library.get_playlist_tracks(int(pid))]
+        try:
+            plays = cloud.get_play_counts()
+            return [self._track_dict(t, plays) for t in cloud.get_playlist_tracks(int(pid))]
+        except cloud.CloudError:
+            return []
 
     # ---- çalma ----
     def play(self, track_id: int, queue_ids: list, source: str) -> dict:
         """queue_ids sırasına göre kuyruğu kurar, track_id'yi çalar."""
-        tracks = [library.get_track(int(i)) for i in (queue_ids or [])]
+        tracks = [cloud.get_track(int(i)) for i in (queue_ids or [])]
         tracks = [t for t in tracks if t]
         idx = next((i for i, t in enumerate(tracks) if t.id == int(track_id)), -1)
         if idx < 0:
@@ -151,13 +159,18 @@ class Api:
         if not (0 <= self._qi < len(self._queue)):
             return {}
         t = self._queue[self._qi]
+        if not cloud.ensure_local(t):  # bu bilgisayarda yoksa buluttan indir
+            return {}
         try:
             self.player.load(t.filepath)
             self.player.play()
         except Exception:  # noqa: BLE001
             return {}
         self._now_path = t.filepath
-        library.record_play(t.id, config.get_user_name())
+        try:
+            cloud.record_play(t.id, config.get_user_name())
+        except cloud.CloudError:
+            pass  # sayac yazilamasa da calma devam etsin
         return self._now_dict() or {}
 
     def toggle(self) -> bool:
@@ -228,10 +241,10 @@ class Api:
         ]}
 
     def download(self, url: str) -> dict:
-        """Bir linki (veya arama sonucu url'ini) indirir, kütüphaneye ekler."""
+        """Bir linki (veya arama sonucu url'ini) indirir, buluta yukleyip kütüphaneye ekler."""
         try:
             track = downloader.download_from_url(url)
-            library.add_track(track)
+            cloud.publish_track(track.filepath, track.title, track.artist, track.duration, track.source_url)
         except Exception as e:  # noqa: BLE001
             return {"error": str(e)}
         return {"ok": True, "title": getattr(track, "title", "")}
@@ -342,25 +355,25 @@ class Api:
     # ---- çalma listesi / şarkı düzenleme ----
     def create_playlist(self, name: str) -> int:
         name = (name or "").strip()
-        return library.create_playlist(name) if name else 0
+        return cloud.create_playlist(name) if name else 0
 
     def delete_playlist(self, pid: int) -> bool:
-        library.delete_playlist(int(pid))
+        cloud.delete_playlist(int(pid))
         return True
 
     def add_to_playlist(self, pid: int, tid: int) -> bool:
-        library.add_track_to_playlist(int(pid), int(tid))
+        cloud.add_track_to_playlist(int(pid), int(tid))
         return True
 
     def remove_from_playlist(self, pid: int, tid: int) -> bool:
-        library.remove_track_from_playlist(int(pid), int(tid))
+        cloud.remove_track_from_playlist(int(pid), int(tid))
         return True
 
     def playlists_for_track(self, tid: int) -> list:
-        return list(library.playlists_for_track(int(tid)))
+        return list(cloud.playlists_for_track(int(tid)))
 
     def rename_track(self, tid: int, title: str, artist: str) -> dict:
-        library.rename_track(int(tid), title, artist)
+        cloud.rename_track(int(tid), title, artist)
         for t in self._queue:  # kuyruktaki gösterimi de tazele
             if t.id == int(tid):
                 t.title = (title or "").strip()
@@ -369,7 +382,7 @@ class Api:
         return {"now": self._now_dict()}
 
     def delete_track(self, tid: int) -> dict:
-        t = library.get_track(int(tid))
+        t = cloud.get_track(int(tid))
         cleared = False
         if t and self._now_path and Path(t.filepath) == Path(self._now_path):
             try:
@@ -379,11 +392,11 @@ class Api:
             self._now_path = None
             self._qi = -1
             cleared = True
-        library.delete_track(int(tid), delete_file=True)
+        cloud.delete_track(int(tid), delete_file=True)
         return {"cleared": cleared}
 
     def reorder_playlist(self, pid: int, ordered_ids: list) -> bool:
-        library.reorder_playlist(int(pid), [int(i) for i in ordered_ids])
+        cloud.reorder_playlist(int(pid), [int(i) for i in ordered_ids])
         return True
 
     def progress(self) -> dict:
@@ -402,29 +415,7 @@ class Api:
             "playing": self.player.is_playing, "advanced": advanced,
         }
 
-    # ---- paylasilan kutuphane ----
-    def get_shared_folder(self) -> str:
-        """Su an aktif olan paylasim klasoru (yoksa bos string)."""
-        return str(config.SHARED_ROOT_FILE.read_text(encoding="utf-8").strip()) if config.SHARED_ROOT_FILE.exists() else ""
-
-    def choose_shared_folder(self) -> dict:
-        """Klasor secme diyalogu acar, seceni kaydeder. Etkisi icin yeniden baslatma gerekir."""
-        if self.window is None:
-            return {"error": "Pencere hazir degil"}
-        try:
-            result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
-        except Exception as e:  # noqa: BLE001
-            return {"error": str(e)}
-        if not result:
-            return {"cancelled": True}
-        folder = result[0]
-        config.set_shared_root(folder)
-        return {"ok": True, "folder": folder}
-
-    def clear_shared_folder(self) -> bool:
-        config.set_shared_root(None)
-        return True
-
+    # ---- paylasilan kutuphane (bulut) ----
     def restart_app(self) -> bool:
         """Uygulamayi kapatip aynisini tekrar baslatir (klasor degisikligi sonrasi)."""
         if not getattr(sys, "frozen", False):

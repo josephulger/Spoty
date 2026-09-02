@@ -21,38 +21,10 @@ if getattr(sys, "frozen", False):
 else:
     PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
-# Paylasilan kutuphane (opsiyonel): iki kisi ayni Google Drive/Dropbox gibi
-# senkron klasoru music/data/video icin kok olarak kullanirsa, kutuphaneler
-# birbirine gorunur. Kok yolu SHARED_ROOT_FILE'a yazilir; bu dosya PROJECT_ROOT'ta
-# (exe'nin yaninda) durur, senkron KLASORUN DISINDADIR -- her bilgisayarda
-# kullanici adi/surucu harfi farkli olabileceginden makineye ozeldir, senkron
-# edilmemelidir.
-SHARED_ROOT_FILE: Path = PROJECT_ROOT / "shared_folder.txt"
-
-
-def _shared_root() -> Path | None:
-    try:
-        p = Path(SHARED_ROOT_FILE.read_text(encoding="utf-8").strip())
-    except Exception:
-        return None
-    return p if p.exists() else None
-
-
-def set_shared_root(path: str | None) -> None:
-    """Paylasilan klasoru ayarlar/kaldirir. Etkisi icin uygulamanin yeniden
-    baslatilmasi gerekir (yollar modul yuklenirken hesaplanir)."""
-    if path:
-        SHARED_ROOT_FILE.write_text(str(Path(path)), encoding="utf-8")
-    else:
-        SHARED_ROOT_FILE.unlink(missing_ok=True)
-
-
-_LIBRARY_ROOT: Path = _shared_root() or PROJECT_ROOT
-
 # Bu bilgisayari kullanan kisinin adi (calma sayaci "kim kac kere dinledi"
-# gostersin diye). Makineye ozeldir, SHARED_ROOT_FILE gibi PROJECT_ROOT'ta
-# durur ve senkron edilmez -- kutuphane paylasilsa bile herkes kendi adini
-# kendi bilgisayarinda ayarlar.
+# gostersin diye). Makineye ozeldir, PROJECT_ROOT'ta durur, senkron edilmez --
+# kutuphane bulutta paylasilsa bile herkes kendi adini kendi bilgisayarinda
+# ayarlar (bkz. spoty/core/cloud.py).
 USER_NAME_FILE: Path = PROJECT_ROOT / "user_name.txt"
 
 
@@ -66,14 +38,16 @@ def get_user_name() -> str:
 def set_user_name(name: str) -> None:
     USER_NAME_FILE.write_text((name or "").strip(), encoding="utf-8")
 
-# Indirilen mp3'lerin gidecegi klasor
-MUSIC_DIR: Path = _LIBRARY_ROOT / "music"
+# Indirilen mp3'lerin yerel onbellegi (asil kutuphane buluttadir, bkz. cloud.py;
+# burasi bu bilgisayarda daha once calinmis/indirilmis dosyalari tutar)
+MUSIC_DIR: Path = PROJECT_ROOT / "music"
 
 # Indirilen videolarin gidecegi klasor (muzik kutuphanesinden ayri tutulur)
-VIDEO_DIR: Path = _LIBRARY_ROOT / "video"
+VIDEO_DIR: Path = PROJECT_ROOT / "video"
 
-# Veritabani vb. verilerin tutuldugu klasor
-DATA_DIR: Path = _LIBRARY_ROOT / "data"
+# Veritabani vb. verilerin tutuldugu klasor (ses/son calinan sarki gibi
+# makineye ozel ayarlar; kutuphanenin kendisi artik burada degil)
+DATA_DIR: Path = PROJECT_ROOT / "data"
 DB_PATH: Path = DATA_DIR / "spoty.db"
 
 # Klasorler yoksa otomatik olustur (uygulama her acildiginda garanti)
@@ -83,8 +57,16 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Surum / guncelleme (GitHub Releases). pyproject.toml'daki version ile birlikte
 # elle guncellenir; her yeni .exe paketlemesinde ikisi de artmali.
-APP_VERSION: str = "1.0.5"
+APP_VERSION: str = "1.1.0"
 GITHUB_REPO: str = "josephulger/Spoty"
+
+# Paylasilan bulut kutuphanesi (Supabase). Doldurulursa (bkz. spoty/core/cloud.py)
+# kutuphane/calma listeleri/calma sayaclari yerelde degil bu projede tutulur;
+# muzik dosyalari da 'spoty-music' depolama kovasina yuklenir. Boylece iki
+# kisi hicbir klasor senkronu kurmadan ayni kutuphaneyi gorur.
+SUPABASE_URL: str = "https://zzccpoliwbaaebbjopfc.supabase.co"
+SUPABASE_ANON_KEY: str = "sb_publishable_ONxpfoUvWgRcbHXZQWfXNA_9TBjrgpe"
+SUPABASE_BUCKET: str = "spoty-music"
 
 # Indirme varsayilanlari
 AUDIO_FORMAT: str = "mp3"
