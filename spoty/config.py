@@ -36,6 +36,11 @@ MUSIC_DIR.mkdir(parents=True, exist_ok=True)
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+# Surum / guncelleme (GitHub Releases). pyproject.toml'daki version ile birlikte
+# elle guncellenir; her yeni .exe paketlemesinde ikisi de artmali.
+APP_VERSION: str = "1.0.1"
+GITHUB_REPO: str = "josephulger/Spoty"
+
 # Indirme varsayilanlari
 AUDIO_FORMAT: str = "mp3"
 AUDIO_QUALITY: str = "192"  # kbps

@@ -12,13 +12,15 @@ import base64
 import io
 import os
 import random
+import sys
+import threading
 from pathlib import Path
 from typing import Optional
 
 from PIL import Image
 
 from spoty import config
-from spoty.core import downloader, library, metadata, settings
+from spoty.core import downloader, library, metadata, settings, updater
 from spoty.core.player import Player
 
 # Çalma listesi karoları için renk paleti (theme.py ile aynı, ctk'siz)
@@ -78,6 +80,7 @@ class Api:
         self._now_path: Optional[str] = None
         self._dl: dict = {}
         self._dl_reset()
+        self._upd: dict = {"active": False, "phase": "", "pct": 0.0}
 
     # ---- yardımcılar ----
     def _track_dict(self, t) -> dict:
@@ -383,6 +386,35 @@ class Api:
             "pos": self.player.position, "dur": self.player.duration,
             "playing": self.player.is_playing, "advanced": advanced,
         }
+
+    # ---- guncelleme ----
+    def check_update(self) -> dict:
+        """Yeni surum var mi diye GitHub Releases'e bakar (yalnizca paketli exe'de)."""
+        if not getattr(sys, "frozen", False):
+            return {}
+        info = updater.check_latest()
+        return info if info.get("available") else {}
+
+    def start_update(self, url: str) -> bool:
+        """Guncellemeyi indirip kurar; bitince uygulama kendini yeniden baslatir."""
+        if self._upd["active"]:
+            return False
+        self._upd = {"active": True, "phase": "başlıyor", "pct": 0.0}
+
+        def on_progress(phase: str, pct: float) -> None:
+            self._upd = {"active": True, "phase": phase, "pct": pct}
+
+        def run() -> None:
+            try:
+                updater.start_update(url, on_progress=on_progress)
+            except Exception as e:  # noqa: BLE001
+                self._upd = {"active": False, "phase": "hata", "pct": 0.0, "error": str(e)}
+
+        threading.Thread(target=run, daemon=True).start()
+        return True
+
+    def update_progress(self) -> dict:
+        return dict(self._upd)
 
     # ---- kapanış ----
     def save_state(self) -> bool:

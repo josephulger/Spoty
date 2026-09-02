@@ -37,11 +37,25 @@ def _set_windows_app_id() -> None:
         pass
 
 
+def _resource_dir() -> Path:
+    """spoty paketinin kaynak dosyalarinin (web/, ico) bulundugu klasor.
+
+    Paketlenmis (frozen/PyInstaller) exe'de __file__ gercek bir dosyayi
+    gostermez (kod PYZ arsivinden yuklenir); bu durumda PyInstaller'in
+    verileri actigi sys._MEIPASS kullanilir. Normal calistirmada spoty
+    paketinin kendi klasorudur.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS) / "spoty"  # type: ignore[attr-defined]
+    return Path(__file__).resolve().parent
+
+
 def main() -> None:
     _set_windows_app_id()   # pencere olusturulmadan ONCE cagrilmali
     api = Api()
-    index = Path(__file__).resolve().parent / "web" / "index.html"
-    icon = Path(__file__).resolve().parent.parent / "spoty.ico"  # proje kökündeki uygulama ikonu
+    resource_dir = _resource_dir()
+    index = resource_dir / "web" / "index.html"
+    icon = resource_dir / "spoty.ico" if getattr(sys, "frozen", False) else resource_dir.parent / "spoty.ico"
     window = webview.create_window(
         "Spoty",
         url=index.as_uri(),

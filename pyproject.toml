@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spoty"
-version = "1.0.0"
+version = "1.0.1"
 description = "Kisisel masaustu muzik uygulamasi (yt-dlp + pywebview)"
 requires-python = ">=3.10"
 dependencies = [

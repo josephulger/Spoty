@@ -551,6 +551,34 @@ async function init() {
   bindBar($('vol'), $('volFill'), $('volKnob'), (v) => API.set_volume(v));
 
   setInterval(poll, 300);
+  checkForUpdate();
+}
+
+// ---------- guncelleme ----------
+async function checkForUpdate() {
+  let info;
+  try { info = await API.check_update(); } catch (e) { return; }
+  if (!info || !info.version) return;
+  setStatus(`Yeni sürüm var: v${info.version}`, {
+    kind: 'info', sticky: true, action: 'Güncelle',
+    onAction: () => runUpdate(info.url),
+  });
+}
+
+async function runUpdate(url) {
+  const ok = await API.start_update(url);
+  if (!ok) return;
+  setStatus('Güncelleniyor…', { sticky: true });
+  const timer = setInterval(async () => {
+    let p;
+    try { p = await API.update_progress(); } catch (e) { clearInterval(timer); return; }
+    if (!p || !p.active) {
+      clearInterval(timer);
+      if (p && p.error) setStatus('Güncelleme başarısız: ' + p.error, { kind: 'error' });
+      return;
+    }
+    updateStatus(`Güncelleniyor… ${p.phase} ${p.pct ? Math.round(p.pct) + '%' : ''}`);
+  }, 400);
 }
 function toggleNp() {
   state.npVisible = !state.npVisible;
