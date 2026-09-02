@@ -38,7 +38,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Surum / guncelleme (GitHub Releases). pyproject.toml'daki version ile birlikte
 # elle guncellenir; her yeni .exe paketlemesinde ikisi de artmali.
-APP_VERSION: str = "1.0.1"
+APP_VERSION: str = "1.0.2"
 GITHUB_REPO: str = "josephulger/Spoty"
 
 # Indirme varsayilanlari
