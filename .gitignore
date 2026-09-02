@@ -20,3 +20,9 @@ __pycache__/
 .idea/
 Thumbs.db
 .DS_Store
+
+# PyInstaller build ciktilari (Release'e ayrica yuklenir, git'e girmez)
+build/
+dist/
+ffmpeg_bin/
+*.spec

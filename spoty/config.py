@@ -8,12 +8,18 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
 # Bu dosya: <proje>/spoty/config.py
 #   .parent        -> <proje>/spoty
 #   .parent.parent -> <proje> (proje koku)
-PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
+# PyInstaller ile paketlenmisse (frozen), veriler exe'nin yaninda tutulur;
+# yoksa iceride kalir ve gunumleri kaybederiz.
+if getattr(sys, "frozen", False):
+    PROJECT_ROOT: Path = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
 # Indirilen mp3'lerin gidecegi klasor
 MUSIC_DIR: Path = PROJECT_ROOT / "music"
@@ -45,9 +51,15 @@ VIDEO_CONTAINER: str = "mp4"
 def find_ffmpeg_dir() -> str | None:
     """ffmpeg.exe'nin bulundugu klasoru dondurur (yt-dlp'ye 'ffmpeg_location' olarak verilir).
 
-    Once sistem PATH'ine bakar. Bulamazsa winget'in ffmpeg'i kurdugu standart
-    konuma duser. Hicbiri yoksa None doner (yt-dlp yine PATH'i kendi dener).
+    Once exe ile birlikte paketlenmis ffmpeg'e bakar, sonra sistem PATH'ine,
+    sonra winget'in ffmpeg'i kurdugu standart konuma duser. Hicbiri yoksa None
+    doner (yt-dlp yine PATH'i kendi dener).
     """
+    if getattr(sys, "frozen", False):
+        bundled = Path(sys.executable).resolve().parent / "ffmpeg.exe"
+        if bundled.exists():
+            return str(bundled.parent)
+
     exe = shutil.which("ffmpeg")
     if exe:
         return str(Path(exe).parent)
